@@ -1,0 +1,10 @@
+.venv
+.venv/
+.venv/**
+**/Jenkinsfile
+deployment/ansible
+deployment/ansible/
+deployment/ansible/**
+deployment/terraform
+deployment/terraform/
+deployment/terraform/**
