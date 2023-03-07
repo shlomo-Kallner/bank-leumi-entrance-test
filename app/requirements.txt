@@ -1,0 +1,3 @@
+fastapi[all,dev,doc,test]
+typing-extensions
+python-dotenv
