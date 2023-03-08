@@ -8,11 +8,12 @@ RUN pip install --no-cache-dir -U pip wheel setuptools build && \
 
 FROM python:3.10 as runtime
 
-LABEL original_maintainer="Sebastian Ramirez <tiangolo@gmail.com>"
+LABEL maintainer="Shlomo Kallner <shlomo.kallner@gmail.com>"
+LABEL original_coder="Sebastian Ramirez <tiangolo@gmail.com>"
 
 COPY deployment/docker/requirements.txt /tmp/requirements.txt
-COPY --from=builder /calc/calc-*.whl /tmp/calc.whl
-RUN pip install --no-cache-dir -r /tmp/requirements.txt /tmp/calc.whl
+COPY --from=builder /calc/dist/calc-*.whl /tmp
+RUN pip install --no-cache-dir -r /tmp/requirements.txt /tmp/calc-*.whl
 
 COPY deployment/docker/start.sh /start.sh
 RUN chmod +x /start.sh
@@ -33,5 +34,6 @@ ENV PYTHONPATH=/app
 EXPOSE 80
 
 # Run the start script, it will check for an /app/prestart.sh script (e.g. for migrations)
-# And then will start Gunicorn with Uvicorn
-CMD ["/start.sh"]
+# # And then will start Gunicorn with Uvicorn
+# CMD ["/start.sh"]
+CMD ["/start-kubernetes.sh"]
