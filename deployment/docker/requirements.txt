@@ -1,0 +1,6 @@
+pip 
+wheel 
+setuptools 
+build
+
+fastapi[all,dev,doc,test]

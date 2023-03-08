@@ -4,3 +4,6 @@
 build
 build/
 build/**
+dist
+dist/
+dist/**

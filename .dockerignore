@@ -8,3 +8,9 @@ deployment/ansible/**
 deployment/terraform
 deployment/terraform/
 deployment/terraform/**
+**/*.egg-info
+**/*.egg-info/
+**/*.egg-info/**
+**/build
+**/build/
+**/build/**
