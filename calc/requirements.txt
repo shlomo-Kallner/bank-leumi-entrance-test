@@ -1,0 +1,10 @@
+pip 
+wheel 
+setuptools 
+build
+
+fastapi[all,dev,doc,test]
+typing-extensions
+python-dotenv
+parglare
+typer[all]
