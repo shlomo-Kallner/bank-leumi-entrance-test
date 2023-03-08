@@ -77,16 +77,7 @@ def genCLIMain() -> Typer:
     def main(expr: str = Argument(...), debug: bool = Option(False)):
         try:
             res = calculate(expr, debug=debug)
-            if debug:
-                print_json(
-                    data={
-                        "expr": expr,
-                        "res": res
-                    },
-                    ensure_ascii=True
-                )
-            else:
-                pprint(f"{expr=}\nexpr = [bold green]{res}[/bold green] :grinning:")
+            pprint(f"{expr=}\nexpr = [bold green]{res}[/bold green] :grinning:")
 
         except Exception as e:
             pprint(f":no_entry: Error! [yellow]`{expr=}`[/yellow] had an error :grimacing: :\n {str(e)}")
