@@ -2,8 +2,8 @@
 
 pipeline {
     agent any
-    options {}
-    triggers {}
+    // options {}
+    // triggers {}
 
     stages {
         stage('Clone') {
