@@ -14,10 +14,15 @@
    4. if `sshd` is not running (is inactive) run: `sudo systemctl start sshd` then check via [3] above.
    5. set ssh to start on reboot: `sudo systemctl enable ssh`
    6. allow ssh through the firewall: `sudo ufw allow ssh`
-   7. find the current user's name: `echo "${USER}"`
-   8. delete the current user's password: `sudo passwd -d ${USER}`
-   9. reset the current user's password (and record the new one!): `sudo passwd ${USER}`
+   7. find the ip address via `ip a` taking care to check for the bridged network interface!
+   8. disable the swap file!
+
+<!-- 7. find the current user's name: `echo "${USER}"`
+   1. delete the current user's password: `sudo passwd -d ${USER}`
+   2. reset the current user's password (and record the new one!): `sudo passwd ${USER}` -->
 
 ## Documentation for some of the ansible playbook's code:
+
 1. ...
 2. https://alta3.com/blog/singlevmk8s
+3. https://docs.tigera.io/calico/3.25/getting-started/kubernetes/quickstart

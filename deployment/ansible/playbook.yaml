@@ -41,6 +41,7 @@
                   - iptables 
                   - ufw
                   - libseccomp2
+                  - vim
                 state: present
                 # update_cache: yes
                 update_cache: true
@@ -57,7 +58,7 @@
 
             - name: Add the docker apt repo
               apt_repository:
-                repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bullseye stable
+                repo: "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/docker.gpg] https://download.docker.com/linux/debian bullseye stable"
                 state: present
                 # update_cache: yes
                 update_cache: true
@@ -104,6 +105,23 @@
                 enabled: true
                 state: restarted
 
+            - name: Create the CNI plugins directory if it does not exist
+              ansible.builtin.file:
+                path: /opt/cni/bin
+                state: directory
+                owner: user
+                # mode: '0755'
+                mode: u+rw,g-wx,o-rwx
+
+            - name: Unarchive the CNI plugins - a file that needs to be downloaded
+              ansible.builtin.unarchive:
+                src: https://github.com/containernetworking/plugins/releases/download/v1.2.0/cni-plugins-linux-amd64-v1.2.0.tgz
+                dest: /opt/cni/bin
+                remote_src: yes
+            
+            - name: Execute the command in remote shell; stdout goes to the specified file on the remote
+              ansible.builtin.shell: containerd config default > /etc/containerd/config.toml
+
             - name: Enable service containerd and restart it
               ansible.builtin.service:
                 name: containerd
@@ -117,9 +135,9 @@
                 keyring: /etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg
                 state: present
 
-            - name: Add the docker apt repo
+            - name: Add the kubernetes apt repo
               apt_repository:
-                repo: deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main
+                repo: "deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main"
                 state: present
                 # update_cache: yes
                 update_cache: true

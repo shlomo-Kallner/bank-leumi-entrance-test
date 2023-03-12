@@ -1,3 +1,5 @@
 .venv
 .venv/
 .venv/**
+inventory.yaml
+extra-vars.json
