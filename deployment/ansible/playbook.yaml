@@ -159,6 +159,7 @@
                 path: /home/user/.kube
                 state: directory
                 owner: user
+                group: docker
                 # mode: '0755'
                 mode: u+rw,g-wx,o-rwx
 
@@ -185,12 +186,14 @@
               args:
                 creates: /home/user/.kube/config
 
-            - name: Create the kube config directory if it does not exist
+            - name: Create the kube config file if it does not exist
+              become: true
               ansible.builtin.file:
                 path: /home/user/.kube/config
                 state: file
                 owner: user
                 group: docker
+                mode: u+rw,g-wx,o-rwx
 
             - name: start the networking addon
               ansible.builtin.command: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/tigera-operator.yaml
