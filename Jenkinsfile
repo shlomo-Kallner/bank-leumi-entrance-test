@@ -8,7 +8,7 @@ pipeline {
     stages {
         stage('Clone') {
             steps{
-                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: 'GITLAB_CREDS', url: 'http://gitlab:9002/sKallner/bank-leumi-entrance-test.git']])
+                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: 'GITLAB_CREDS', url: 'http://gitlab/sKallner/bank-leumi-entrance-test.git']])
             }
         }
         stage('Build') {
