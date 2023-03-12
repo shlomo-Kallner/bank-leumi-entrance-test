@@ -1,14 +1,18 @@
 ---
 
     -   hosts: all
-        remote_user: ubuntu
-        become: yes
+        remote_user: user
+        # become: yes
+        become: true
         tasks:
             - name: testing my connections
               ping:
+
             - name: Run the equivalent of "apt-get update" as a separate step
               apt:
-                update_cache: yes
+                # update_cache: yes
+                update_cache: true
+
             - name: install GNUPG, cURL, ca-certificates and lsb-release
               apt:
                 name: 
@@ -34,7 +38,167 @@
                   - python3-distutils
                   - python3-git
                   - python3-apt
+                  - iptables 
+                  - ufw
+                  - libseccomp2
                 state: present
-                update_cache: yes
-                autoclean: yes
-                autoremove: yes
+                # update_cache: yes
+                update_cache: true
+                # autoclean: yes
+                autoclean: true
+                # autoremove: yes
+                autoremove: true
+
+            - name: Add the docker signing key to apt
+              apt_key:
+                url: https://download.docker.com/linux/debian/gpg
+                keyring: /etc/apt/trusted.gpg.d/docker.gpg
+                state: present
+
+            - name: Add the docker apt repo
+              apt_repository:
+                repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bullseye stable
+                state: present
+                # update_cache: yes
+                update_cache: true
+
+            - name: Install the docker cli
+              apt:
+                name:
+                  - docker-ce-cli
+                  - docker-ce
+                  - containerd.io
+                  - docker-compose-plugin
+                  # - docker-buildx-plugin 
+                state: present
+                # update_cache: yes
+                update_cache: true
+                # autoclean: yes
+                # autoremove: yes
+
+            - name: Ensure group "docker" exists
+              group:
+                name: docker
+                state: present
+
+            - name: Add the user 'user' with a bash shell, appending the group 'docker' to the user's groups
+              user:
+                name: user
+                shell: /bin/bash
+                home: /home/user
+                move_home: true
+                groups: 
+                  - docker
+                append: yes
+                state: present
+
+            - name: Copy using inline content
+              ansible.builtin.copy:
+                content: '{"exec-opts": ["native.cgroupdriver=systemd"]}'
+                dest: /etc/docker/daemon.json
+
+            - name: Enable service docker and restart it
+              ansible.builtin.service:
+                name: docker
+                # enabled: yes
+                enabled: true
+                state: restarted
+
+            - name: Enable service containerd and restart it
+              ansible.builtin.service:
+                name: containerd
+                # enabled: yes
+                enabled: true
+                state: restarted
+
+            - name: Add the kubernetes signing key to apt
+              apt_key:
+                url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+                keyring: /etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg
+                state: present
+
+            - name: Add the docker apt repo
+              apt_repository:
+                repo: deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main
+                state: present
+                # update_cache: yes
+                update_cache: true
+
+            - name: Install kubernetes
+              apt:
+                name:
+                  - kubectl
+                  - kubelet
+                  - kubeadm
+                state: present
+                # update_cache: yes
+                update_cache: true
+                # autoclean: yes
+                # autoremove: yes
+
+            - name: Create the kube config directory if it does not exist
+              ansible.builtin.file:
+                path: /home/user/.kube
+                state: directory
+                owner: user
+                # mode: '0755'
+                mode: u+rw,g-wx,o-rwx
+
+            - name: Just force systemd to reread configs (2.4 and above)
+              ansible.builtin.systemd:
+                daemon_reload: true
+
+            # free-form (string) arguments, some arguments on separate lines with the 'args' keyword
+            # 'args' is a task keyword, passed at the same level as the module
+            - name: Run command if /path/to/database does not exist (with 'args' keyword)
+              ansible.builtin.command:  kubeadm init --pod-network-cidr={{ network_cidr | quote }} --cri-socket "unix:///run/containerd/containerd.sock"
+              # args:
+              #   creates: /path/to/database
+
+    -   hosts: all
+        remote_user: user
+        become: false
+        tasks:
+            - name: testing my connections
+              ping:
+
+            - name: copy the admin config
+              ansible.builtin.command: sudo cp -i /etc/kubernetes/admin.conf /home/user/.kube/config
+              args:
+                creates: /home/user/.kube/config
+
+            - name: Create the kube config directory if it does not exist
+              ansible.builtin.file:
+                path: /home/user/.kube/config
+                state: file
+                owner: user
+                group: docker
+
+            - name: start the networking addon
+              ansible.builtin.command: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/tigera-operator.yaml
+
+            - name: Create the app config directory if it does not exist
+              ansible.builtin.file:
+                path: /home/user/app
+                state: directory
+                owner: user
+                # mode: '0755'
+                mode: u+rw,g-wx,o-rwx
+
+            - name: Template the Calico networking resources
+              ansible.builtin.template:
+                src: templates/calico-resources.yaml.j2
+                dest: /home/user/app/calico-resources.yaml
+
+            - name: Create the Calico networking resources
+              ansible.builtin.command: kubectl create -f /home/user/app/calico-resources.yaml
+
+            - name: Wait for the Calico networking resources to complete ..
+              ansible.builtin.command: sleep 240
+
+            # - name: Create the Calico networking resources
+            #   ansible.builtin.command: kubectl create -f /home/user/app/calico-resources.yaml
+
+            
+
+            
