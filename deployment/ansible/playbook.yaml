@@ -1,0 +1,40 @@
+---
+
+    -   hosts: all
+        remote_user: ubuntu
+        become: yes
+        tasks:
+            - name: testing my connections
+              ping:
+            - name: Run the equivalent of "apt-get update" as a separate step
+              apt:
+                update_cache: yes
+            - name: install GNUPG, cURL, ca-certificates and lsb-release
+              apt:
+                name: 
+                  - gnupg 
+                  - curl 
+                  - gnupg2 
+                  - ca-certificates 
+                  - lsb-release
+                  - apt-transport-https
+                  - build-essential 
+                  - rsync 
+                  - apt-utils  
+                  - software-properties-common 
+                  - jq 
+                  - unzip
+                  - git
+                  - python3 
+                  - python3-pip 
+                  - python3-venv 
+                  - python3-wheel
+                  - python3-setuptools
+                  - python3-pkg-resources
+                  - python3-distutils
+                  - python3-git
+                  - python3-apt
+                state: present
+                update_cache: yes
+                autoclean: yes
+                autoremove: yes
