@@ -42,6 +42,7 @@
                   - ufw
                   - libseccomp2
                   - vim
+                  - strace
                 state: present
                 # update_cache: yes
                 update_cache: true
@@ -170,9 +171,17 @@
             # free-form (string) arguments, some arguments on separate lines with the 'args' keyword
             # 'args' is a task keyword, passed at the same level as the module
             - name: Run command if /path/to/database does not exist (with 'args' keyword)
-              ansible.builtin.command:  kubeadm init --pod-network-cidr={{ network_cidr | quote }} --cri-socket "unix:///run/containerd/containerd.sock"
+              ansible.builtin.command:  kubeadm init --pod-network-cidr={{ network_cidr | quote }} --cri-socket "unix:///run/containerd/containerd.sock" --apiserver-advertise-address="0.0.0.0:6443" --control-plane-endpoint=""
+              register: admin_output
+              ignore_errors: true
               # args:
               #   creates: /path/to/database
+            
+            - name: Print a message
+              ansible.builtin.debug:
+                var: admin_output
+              failed_when: admin_output is failed
+
 
     -   hosts: all
         remote_user: user
@@ -195,30 +204,50 @@
                 group: docker
                 mode: u+rw,g-wx,o-rwx
 
-            - name: start the networking addon
-              ansible.builtin.command: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/tigera-operator.yaml
+            - name: tricky command
+              block:
 
-            - name: Create the app config directory if it does not exist
-              ansible.builtin.file:
-                path: /home/user/app
-                state: directory
-                owner: user
-                # mode: '0755'
-                mode: u+rw,g-wx,o-rwx
+                - name: start the networking addon
+                  ansible.builtin.command: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/tigera-operator.yaml
 
-            - name: Template the Calico networking resources
-              ansible.builtin.template:
-                src: templates/calico-resources.yaml.j2
-                dest: /home/user/app/calico-resources.yaml
+                - name: Create the app config directory if it does not exist
+                  ansible.builtin.file:
+                    path: /home/user/app
+                    state: directory
+                    owner: user
+                    # mode: '0755'
+                    mode: u+rw,g-wx,o-rwx
 
-            - name: Create the Calico networking resources
-              ansible.builtin.command: kubectl create -f /home/user/app/calico-resources.yaml
+                - name: Template the Calico networking resources
+                  ansible.builtin.template:
+                    src: templates/calico-resources.yaml.j2
+                    dest: /home/user/app/calico-resources.yaml
 
-            - name: Wait for the Calico networking resources to complete ..
-              ansible.builtin.command: sleep 240
+                - name: Create the Calico networking resources
+                  ansible.builtin.command: kubectl create -f /home/user/app/calico-resources.yaml
 
-            # - name: Create the Calico networking resources
-            #   ansible.builtin.command: kubectl create -f /home/user/app/calico-resources.yaml
+                - name: Wait for the Calico networking resources to complete ..
+                  ansible.builtin.command: sleep 240
+
+                # - name: Create the Calico networking resources
+                #   ansible.builtin.command: kubectl create -f /home/user/app/calico-resources.yaml
+
+                - name: Enable workloads on the control plane
+                  ansible.builtin.command: kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+              
+              rescue:
+            
+                - name: Print the failed task
+                  ansible.builtin.debug:
+                    var: ansible_failed_task
+            
+                - name: Print the failed task result
+                  ansible.builtin.debug:
+                    var: ansible_failed_result
+
+                - name: reset the cluster
+                  become: true
+                  ansible.builtin.command: kubeadm reset
 
             
 
