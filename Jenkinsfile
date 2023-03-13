@@ -25,6 +25,12 @@ pipeline {
         stage('Build') {
             steps {
                 sh "docker build -t bank-leumi-entrance-exam-calc:latest ."
+                sh "docker tag bank-leumi-entrance-exam-calc:latest shlomokallner613/bank-leumi-entrance-exam-calc:latest"
+                withCredentials([usernamePassword(credentialsId: 'DOCKER_HUB_ID', passwordVariable: 'DOCKER_HUB_PASSWD', usernameVariable: 'DOCKER_HUB_USER')]) {
+                    sh "docker login -u '${DOCKER_HUB_USER}' -p '${DOCKER_HUB_PASSWD}'"
+                    sh "docker push shlomokallner613/bank-leumi-entrance-exam-calc:latest"
+                    sh "docker logout"
+                }
             }
         }
         stage('Deploy') {

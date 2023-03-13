@@ -169,41 +169,74 @@
               ansible.builtin.systemd:
                 daemon_reload: true
 
-            - name: check if the Cluster is Initialized
-              ansible.builtin.shell: kubectl get nodes -A -o=json | jq -r '.items | length'
-              register: num_items
-              ignore_errors: true
-            
-            - name: Print the number of items in the Cluster
-              ansible.builtin.debug:
-                var: num_items
+            - name: add error catching for a block of plays
+              block:
 
-            - name: Pull ahead of time the Cluster images
-              ansible.builtin.command: kubeadm config images pull
-              register: pull_out
-            
-            - name: Print the images pull output
-              ansible.builtin.debug:
-                var: pull_out
+                - name: check if the Cluster is Initialized
+                  ansible.builtin.shell: kubectl get nodes -A -o=json | jq -r '.items | length'
+                  register: num_items
+                  ignore_errors: true
+                
+                - name: Print the number of items in the Cluster
+                  ansible.builtin.debug:
+                    var: num_items
 
-            # free-form (string) arguments, some arguments on separate lines with the 'args' keyword
-            # 'args' is a task keyword, passed at the same level as the module
-            - name: Initialize the Cluster
-              ansible.builtin.command:  kubeadm init --pod-network-cidr=192.168.0.0/16 --cri-socket "unix:///run/containerd/containerd.sock" --apiserver-advertise-address=0.0.0.0 --control-plane-endpoint=0.0.0.0
-              register: admin_output
-              ignore_errors: true
-              # when: num_items | int > 0
-              # args:
-              #   creates: /path/to/database
-            
-            - name: Print the output of the Initialization
-              ansible.builtin.debug:
-                var: admin_output
-              failed_when: admin_output is failed
+                - name: Pull ahead of time the Cluster images
+                  ansible.builtin.command: kubeadm config images pull
+                  register: pull_out
+                
+                - name: Print the images pull output
+                  ansible.builtin.debug:
+                    var: pull_out
 
-            - name: Sleep for 300 seconds and continue with play
-              ansible.builtin.wait_for:
-                timeout: 300
+                # free-form (string) arguments, some arguments on separate lines with the 'args' keyword
+                # 'args' is a task keyword, passed at the same level as the module
+                - name: Initialize the Cluster
+                  ansible.builtin.command:  kubeadm init --pod-network-cidr=10.10.0.0/16 --cri-socket "unix:///run/containerd/containerd.sock" --apiserver-advertise-address=0.0.0.0 --control-plane-endpoint=0.0.0.0
+                  register: admin_output
+                  # ignore_errors: true
+                  # when: num_items | int > 0
+                  # args:
+                  #   creates: /path/to/database
+                
+                - name: Print the output of the Initialization
+                  ansible.builtin.debug:
+                    var: admin_output
+                  failed_when: admin_output is failed
+
+                - name: Sleep for 300 seconds and continue with play
+                  ansible.builtin.wait_for:
+                    timeout: 300
+                      
+              rescue:
+            
+                - name: Print the failed task
+                  ansible.builtin.debug:
+                    var: ansible_failed_task
+            
+                - name: Print the failed task result
+                  ansible.builtin.debug:
+                    var: ansible_failed_result
+
+                - name: reset the cluster
+                  become: true
+                  ansible.builtin.command: kubeadm reset -f
+
+                - name: Remove the kube config file if it already exists
+                  become: true
+                  ansible.builtin.file:
+                    path: /home/user/.kube/config
+                    state: absent
+
+                - name: Remove the cni files if it already exists
+                  become: true
+                  ansible.builtin.file:
+                    path: /etc/cni/net.d/
+                    state: absent
+                
+                - name: fail this run
+                  ansible.builtin.command: /bin/false
+                  ignore_errors: false
 
 
     -   hosts: all
