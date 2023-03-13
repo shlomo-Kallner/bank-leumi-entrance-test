@@ -1,3 +1,5 @@
 {
-    "network_cidr": "==CIDR=="
+    "network_cidr": "==CIDR==",
+    "apiserver_address": "==APISERVER==",
+    "ctlplane_endpoint": "==CTLPLANE=="
 }

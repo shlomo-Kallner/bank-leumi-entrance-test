@@ -95,7 +95,7 @@
                 append: yes
                 state: present
 
-            - name: Copy using inline content
+            - name: Set the native CGroupDriver - Copy using inline content
               ansible.builtin.copy:
                 content: '{"exec-opts": ["native.cgroupdriver=systemd"]}'
                 dest: /etc/docker/daemon.json
@@ -156,6 +156,13 @@
                 # autoclean: yes
                 # autoremove: yes
 
+            - name: Add Extra Containerd Args for Kubelet - Copy using inline content
+              ansible.builtin.copy:
+                content: |
+                  [Service]                                                 
+                  Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
+                dest: /etc/systemd/system/kubelet.service.d/0-containerd.conf
+
             - name: Create the kube config directory if it does not exist
               ansible.builtin.file:
                 path: /home/user/.kube
@@ -192,7 +199,7 @@
                 # free-form (string) arguments, some arguments on separate lines with the 'args' keyword
                 # 'args' is a task keyword, passed at the same level as the module
                 - name: Initialize the Cluster
-                  ansible.builtin.command:  kubeadm init --pod-network-cidr=10.10.0.0/16 --cri-socket "unix:///run/containerd/containerd.sock" --apiserver-advertise-address=0.0.0.0 --control-plane-endpoint=0.0.0.0
+                  ansible.builtin.command:  kubeadm init --pod-network-cidr={{ network_cidr | default('10.10.0.0/16') | quote }} --cri-socket "unix:///run/containerd/containerd.sock" --apiserver-advertise-address={{ apiserver_address | default('0.0.0.0') | quote }} --control-plane-endpoint={{ ctlplane_endpoint | default('0.0.0.0') | quote }}
                   register: admin_output
                   # ignore_errors: true
                   # when: num_items | int > 0
@@ -298,7 +305,9 @@
                   ansible.builtin.command: kubectl create -f /home/user/app/calico-resources.yaml
 
                 - name: Wait for the Calico networking resources to complete ..
-                  ansible.builtin.command: sleep 240
+                  # ansible.builtin.command: sleep 240
+                  ansible.builtin.wait_for:
+                    timeout: 300
 
                 # - name: Create the Calico networking resources
                 #   ansible.builtin.command: kubectl create -f /home/user/app/calico-resources.yaml
@@ -334,6 +343,10 @@
                   ansible.builtin.file:
                     path: /etc/cni/net.d/
                     state: absent
+                
+                - name: fail this run
+                  ansible.builtin.command: /bin/false
+                  ignore_errors: false
 
             
 

@@ -1,3 +1,5 @@
 {
-    "network_cidr": "10.0.0.0/16"
+    "network_cidr": "10.0.0.0/16",
+    "apiserver_address": "0.0.0.0",
+    "ctlplane_endpoint": "0.0.0.0"
 }

@@ -4,7 +4,7 @@ kind: Deployment
 
 metadata:
 
-  name: calc-app-deployment
+  name: calc-app
 
   labels:
 
@@ -40,5 +40,5 @@ spec:
 
             - containerPort: 80
           
-          limits:
+          limits: 
             

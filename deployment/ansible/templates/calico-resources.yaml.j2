@@ -11,7 +11,7 @@ spec:
     ipPools:
     - blockSize: 26
       # cidr: {{ network_cidr | default("192.168.0.0/16") | quote }}
-      cidr: 10.10.0.0/16
+      cidr: {{ network_cidr | default('10.10.0.0/16') | quote }}
       encapsulation: VXLANCrossSubnet
       natOutgoing: Enabled
       nodeSelector: all()
