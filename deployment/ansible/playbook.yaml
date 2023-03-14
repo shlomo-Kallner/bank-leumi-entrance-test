@@ -509,6 +509,7 @@
                     rule: allow
                     port: '443'
                     proto: tcp
+                    state: enabled
 
                 # - name: Allow all access from RFC1918 networks to this host
                 #   community.general.ufw:
