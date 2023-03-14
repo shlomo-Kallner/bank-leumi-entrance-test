@@ -95,6 +95,92 @@
                 append: yes
                 state: present
 
+            - name: Create the bash_aliases file if it does not exist
+              become: true
+              ansible.builtin.file:
+                path: /home/user/.bash_aliases
+                state: touch
+                owner: user
+                group: docker
+                mode: u+rwx,g-wx,o-rwx
+
+            - name: Create the app config directory if it does not exist
+              ansible.builtin.file:
+                path: /home/user/app
+                state: directory
+                owner: user
+                # mode: '0755'
+                mode: u+rw,g-wx,o-rwx
+
+            - name: Remove the go files if it already exists
+              become: true
+              ansible.builtin.file:
+                path: /usr/local/go/
+                state: absent
+
+            - name: Unarchive the go binaries - a file that needs to be downloaded
+              ansible.builtin.unarchive:
+                src: https://go.dev/dl/go1.20.2.linux-amd64.tar.gz
+                dest: /usr/local
+                remote_src: yes
+                creates: /usr/local/go/
+                owner: user
+                group: docker
+                mode: u+rwx,g+rwx,o-rwx
+              register: go_bin
+                
+            - name: Print the go bin unarchiving
+              ansible.builtin.debug:
+                var: go_bin
+
+            - name: add go to the bash_aliases
+              ansible.builtin.shell: echo 'export PATH=$PATH:/usr/local/go/bin' > /home/user/.bash_aliases
+              args:
+                executable: /bin/bash
+
+            - name: reload bashrc
+              ansible.builtin.shell: source /home/user/.profile
+              args:
+                executable: /bin/bash
+
+            - name: chech go installation
+              ansible.builtin.shell: /usr/local/go/bin/go version
+              args:
+                executable: /bin/bash
+              register: go_ver_res
+              # failed_when: "go_ver_res.stderr.find('go: command not found') != -1"
+              failed_when: "go_ver_res.stderr.find('not found') != -1"
+                
+            - name: Print the go version
+              ansible.builtin.debug:
+                var: go_ver_res
+
+            # - name: download cnitool
+            #   ansible.builtin.shell: /usr/local/go/bin/go get github.com/containernetworking/cni
+            #   args:
+            #     executable: /bin/bash
+
+            - name: Remove the cni go files if they already exists
+              become: true
+              ansible.builtin.file:
+                path: /home/user/app/cni
+                state: absent
+
+            - name: clone cnitool
+              ansible.builtin.shell: cd /home/user/app && git clone https://github.com/containernetworking/cni.git
+              args:
+                executable: /bin/bash
+
+            # - name: download cnitool
+            #   ansible.builtin.shell: cd /home/user/app/cni && /usr/local/go/bin/go get github.com/containernetworking/cni
+            #   args:
+            #     executable: /bin/bash
+
+            - name: install cnitool
+              ansible.builtin.shell: cd /home/user/app/cni && /usr/local/go/bin/go install github.com/containernetworking/cni/cnitool
+              args:
+                executable: /bin/bash
+
             - name: Set the native CGroupDriver - Copy using inline content
               ansible.builtin.copy:
                 content: '{"exec-opts": ["native.cgroupdriver=systemd"]}'
@@ -122,7 +208,9 @@
                 remote_src: yes
             
             - name: Execute the command in remote shell; stdout goes to the specified file on the remote
-              ansible.builtin.shell: containerd config default > /etc/containerd/config.toml
+              ansible.builtin.shell: sudo containerd config default > /etc/containerd/config.toml
+              args:
+                executable: /bin/bash
 
             - name: Enable service containerd and restart it
               ansible.builtin.service:
@@ -163,6 +251,26 @@
                   Environment="KUBELET_EXTRA_ARGS=--container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
                 dest: /etc/systemd/system/kubelet.service.d/0-containerd.conf
 
+            - name: setup ip forwarding - Copy using inline content
+              ansible.builtin.copy:
+                content: 'net.ipv4.ip_forward = 1'
+                dest: /etc/sysctl.d/10-ip-forwarding.conf
+
+            - name: setup ip forwarding with sysctl
+              ansible.builtin.shell: sudo sysctl net.ipv4.ip_forward=1
+              args:
+                executable: /bin/bash
+
+            - name: setup netfilter - Copy using inline content
+              ansible.builtin.copy:
+                content: 'br_netfilter'
+                dest: /etc/modules-load.d/br_nf.conf
+
+            - name: setup netfilter with modprobe
+              ansible.builtin.shell: sudo modprobe br_netfilter
+              args:
+                executable: /bin/bash
+
             - name: Create the kube config directory if it does not exist
               ansible.builtin.file:
                 path: /home/user/.kube
@@ -172,6 +280,11 @@
                 # mode: '0755'
                 mode: u+rw,g-wx,o-rwx
 
+            - name: Disable the swap file
+              ansible.builtin.shell: sudo swapoff -a
+              args:
+                executable: /bin/bash
+
             - name: Just force systemd to reread configs (2.4 and above)
               ansible.builtin.systemd:
                 daemon_reload: true
@@ -179,14 +292,16 @@
             - name: add error catching for a block of plays
               block:
 
-                - name: check if the Cluster is Initialized
-                  ansible.builtin.shell: kubectl get nodes -A -o=json | jq -r '.items | length'
-                  register: num_items
-                  ignore_errors: true
+                # - name: check if the Cluster is Initialized
+                #   ansible.builtin.shell: kubectl get nodes -A -o=json | jq -r '.items | length'
+                #   args:
+                #     executable: /bin/bash
+                #   register: num_items
+                #   ignore_errors: true
                 
-                - name: Print the number of items in the Cluster
-                  ansible.builtin.debug:
-                    var: num_items
+                # - name: Print the number of items in the Cluster
+                #   ansible.builtin.debug:
+                #     var: num_items
 
                 - name: Pull ahead of time the Cluster images
                   ansible.builtin.command: kubeadm config images pull
@@ -224,6 +339,29 @@
                 - name: Print the failed task result
                   ansible.builtin.debug:
                     var: ansible_failed_result
+
+                - name: get the kubelet's status
+                  become: true 
+                  # ansible.builtin.shell: echo $(sudo systemctl status kubelet)
+                  ansible.builtin.shell: sudo systemctl status kubelet
+                  args:
+                    executable: /bin/bash
+                  register: kubelet_status
+            
+                - name: Print the kubelet's status
+                  ansible.builtin.debug:
+                    var: kubelet_status
+
+                - name: get all containers' status
+                  become: true 
+                  ansible.builtin.shell: sudo crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps -a
+                  args:
+                    executable: /bin/bash
+                  register: containers_status
+            
+                - name: Print the containers' status
+                  ansible.builtin.debug:
+                    var: containers_status
 
                 - name: reset the cluster
                   become: true
@@ -271,7 +409,8 @@
             - name: copy the admin config
               ansible.builtin.shell: sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
               args:
-                creates: /home/user/.kube/config
+                executable: /bin/bash
+                # creates: /home/user/.kube/config
 
             - name: Create the kube config file if it does not exist
               become: true
@@ -285,21 +424,21 @@
             - name: tricky commands
               block:
 
-                - name: start the networking addon
-                  ansible.builtin.command: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/tigera-operator.yaml
-
-                - name: Create the app config directory if it does not exist
-                  ansible.builtin.file:
-                    path: /home/user/app
-                    state: directory
-                    owner: user
-                    # mode: '0755'
-                    mode: u+rw,g-wx,o-rwx
+                # - name: Create the app config directory if it does not exist
+                #   ansible.builtin.file:
+                #     path: /home/user/app
+                #     state: directory
+                #     owner: user
+                #     # mode: '0755'
+                #     mode: u+rw,g-wx,o-rwx
 
                 - name: Template the Calico networking resources
                   ansible.builtin.template:
                     src: templates/calico-resources.yaml.j2
                     dest: /home/user/app/calico-resources.yaml
+
+                - name: start the networking addon
+                  ansible.builtin.command: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/tigera-operator.yaml
 
                 - name: Create the Calico networking resources
                   ansible.builtin.command: kubectl create -f /home/user/app/calico-resources.yaml
@@ -309,6 +448,19 @@
                   ansible.builtin.wait_for:
                     timeout: 300
 
+                - name: Retry a task until a certain condition is met
+                  ansible.builtin.shell: kubectl get pods -n calico-system -o=json | jq -r '( .items | length) == ([ [ [.items[] | .status.phase] | .[] == "Running" ] | select( .[] == true ) ] | length)'
+                  args:
+                    executable: /bin/bash
+                  register: result
+                  until: result.stdout.find("true") != -1
+                  retries: 50
+                  delay: 10
+            
+                - name: Print the result
+                  ansible.builtin.debug:
+                    var: result
+
                 # - name: Create the Calico networking resources
                 #   ansible.builtin.command: kubectl create -f /home/user/app/calico-resources.yaml
 
@@ -317,6 +469,55 @@
 
                 - name: Enable workloads on the control plane - part 2
                   ansible.builtin.command: kubectl taint nodes --all node-role.kubernetes.io/master-
+
+                - name: Create a TLS Certificate
+                  ansible.builtin.shell: openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout /home/user/app/tls.key -out /home/user/app/tls.crt -subj "/CN={{ dns_host_name | default('nginxsvc') }}/O={{ dns_host_name | default('nginxsvc') }}"
+                  args:
+                    executable: /bin/bash
+                    # creates:
+                    #   - /home/user/app/tls.key
+                    #   - /home/user/app/tls.crt
+
+                - name: Create the TLS Secret
+                  ansible.builtin.command: kubectl create secret tls calc-app-tls-secret --key /home/user/app/tls.key --cert /home/user/app/tls.crt
+
+                - name: Create the Nginx Ingress Controller
+                  ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.6.4/deploy/static/provider/baremetal/deploy.yaml
+
+                - name: Copy file with owner and permission, using symbolic representation
+                  ansible.builtin.copy:
+                    src: files/calc-app.k8s.yaml
+                    dest: /home/user/app/calc-app.k8s.yaml
+                    owner: user
+                    group: docker
+                    mode: u=rw,g=r,o=r
+
+                - name: Create our App!!
+                  ansible.builtin.command: kubectl apply -f /home/user/app/calc-app.k8s.yaml
+
+                - name: Retry a task until a certain condition is met
+                  ansible.builtin.shell: kubectl get pods -l app=calc-app -o=json | jq -r '( .items | length) == ([ [ [.items[] | .status.phase] | .[] == "Running" ] | select( .[] == true ) ] | length)'
+                  args:
+                    executable: /bin/bash
+                  register: result
+                  until: result.stdout.find("true") != -1
+                  retries: 50
+                  delay: 10
+
+                - name: Allow all access to tcp port 443
+                  community.general.ufw:
+                    rule: allow
+                    port: '443'
+                    proto: tcp
+
+                # - name: Allow all access from RFC1918 networks to this host
+                #   community.general.ufw:
+                #     rule: allow
+                #     src: '{{ item }}'
+                #   loop:
+                #     - 10.0.0.0/8
+                #     - 172.16.0.0/12
+                #     - 192.168.0.0/16
               
               rescue:
             
@@ -327,6 +528,28 @@
                 - name: Print the failed task result
                   ansible.builtin.debug:
                     var: ansible_failed_result
+
+                - name: get the kubelet's status
+                  become: true 
+                  ansible.builtin.shell: sudo systemctl status kubelet
+                  args:
+                    executable: /bin/bash
+                  register: kubelet_status
+            
+                - name: Print the kubelet's status
+                  ansible.builtin.debug:
+                    var: kubelet_status
+
+                - name: get all containers' status
+                  become: true 
+                  ansible.builtin.shell: sudo crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps -a
+                  args:
+                    executable: /bin/bash
+                  register: containers_status
+            
+                - name: Print the containers' status
+                  ansible.builtin.debug:
+                    var: containers_status
 
                 - name: reset the cluster
                   become: true

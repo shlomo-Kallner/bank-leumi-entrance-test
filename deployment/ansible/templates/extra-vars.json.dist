@@ -1,5 +1,6 @@
 {
     "network_cidr": "==CIDR==",
     "apiserver_address": "==APISERVER==",
-    "ctlplane_endpoint": "==CTLPLANE=="
+    "ctlplane_endpoint": "==CTLPLANE==",
+    "dns_host_name": "==DNSHOSTNAME=="
 }

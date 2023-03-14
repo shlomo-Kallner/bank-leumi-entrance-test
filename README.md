@@ -21,8 +21,12 @@
    1. delete the current user's password: `sudo passwd -d ${USER}`
    2. reset the current user's password (and record the new one!): `sudo passwd ${USER}` -->
 
-## Documentation for some of the ansible playbook's code:
+## Documentation for some of the ansible playbook's code
 
 1. ...
 2. https://alta3.com/blog/singlevmk8s
 3. https://docs.tigera.io/calico/3.25/getting-started/kubernetes/quickstart
+
+## Additional Documentation used for EC2 User Data setup
+
+- https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html

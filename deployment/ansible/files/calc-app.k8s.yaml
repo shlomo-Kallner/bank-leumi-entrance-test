@@ -1,0 +1,112 @@
+---
+
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+
+  name: calc-app
+
+  labels:
+
+    app.kubernetes.io/name: calc-app
+    app: calc-app
+
+spec:
+
+  replicas: 1
+
+  selector:
+
+    matchLabels:
+
+      app.kubernetes.io/name: calc-app
+      app: calc-app
+
+  template:
+
+    metadata:
+
+      labels:
+
+        app.kubernetes.io/name: calc-app
+        app: calc-app
+
+    spec:
+
+      containers:
+
+        - name: calc-app
+
+          image: shlomokallner613/bank-leumi-entrance-exam-calc:latest
+
+          ports:
+
+            - containerPort: 80
+          
+          limits:
+            
+---
+
+apiVersion: v1
+
+kind: Service
+
+metadata:
+
+  name: calc-app
+  annotations: {}
+    
+
+  labels:
+
+    app.kubernetes.io/name: calc-app
+    app: calc-app
+
+spec:
+
+  type: NodePort
+
+  selector:
+    app.kubernetes.io/name: calc-app
+    app: calc-app
+
+  ports:
+
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+    # Optional field
+    # By default and for convenience, the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
+    nodePort: 30007
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-calc-app
+  annotations: {}
+spec:
+  tls:
+    # - hosts:
+    #   - foo.bar.com
+    #   # This assumes tls-secret exists and the SSL
+    #   # certificate contains a CN for foo.bar.com
+    #   secretName: tls-secret
+    - secretName: calc-app-tls-secret
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: calc-app
+            port:
+              number: 80
+  ingressClassName: nginx
+
+# ---
+
