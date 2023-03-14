@@ -48,7 +48,8 @@ pipeline {
                         python3 -m pip install -U ansible
                         ansible-playbook --syntax-check ./deployment/ansible/playbook.yaml
                         cat ./deployment/ansible/templates/inventory.yaml.dist | sed -e "s/==HOST==/${ANSIBLE_INVENTORY}/g" > ./inventory.yaml
-                        ansible-playbook --inventory ./inventory.yaml --private-key ${SSH_KEY_FOR_ANSIBLE} -u "user" -e @./deployment/ansible/templates/extra-vars.json ./deployment/ansible/playbook.yaml
+                        # ansible-playbook --inventory ./inventory.yaml --private-key ${SSH_KEY_FOR_ANSIBLE} -u "user" -e @./deployment/ansible/templates/extra-vars.json ./deployment/ansible/playbook.yaml
+                        ansible-playbook --inventory ./inventory.yaml --private-key ${SSH_KEY_FOR_ANSIBLE} -u "user" ./deployment/ansible/playbook.yaml
                         # protect our secrets!
                         rm -f ./inventory.yaml
                     """
