@@ -10,7 +10,7 @@ resource "aws_lb" "test_spoke_nlb" {
   }
   access_logs {
     enabled = true
-    bucket = "ank-leumi-entrance-exam-logs"
+    bucket = "bank-leumi-entrance-exam-logs"
   }
   preserve_host_header = true
 }

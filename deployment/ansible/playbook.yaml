@@ -6,15 +6,15 @@
         become: true
         tasks:
             - name: testing my connections
-              ping:
+              ansible.builtin.ping:
 
             - name: Run the equivalent of "apt-get update" as a separate step
-              apt:
+              ansible.builtin.apt:
                 # update_cache: yes
                 update_cache: true
 
             - name: install GNUPG, cURL, ca-certificates and lsb-release
-              apt:
+              ansible.builtin.apt:
                 name: 
                   - gnupg 
                   - curl 
@@ -53,25 +53,25 @@
                 autoremove: true
 
             - name: Add the docker signing key to apt
-              apt_key:
+              ansible.builtin.apt_key:
                 url: https://download.docker.com/linux/debian/gpg
                 keyring: /etc/apt/trusted.gpg.d/docker.gpg
                 state: present
 
             - name: Add the docker apt repo
-              apt_repository:
+              ansible.builtin.apt_repository:
                 repo: "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/docker.gpg] https://download.docker.com/linux/debian bullseye stable"
                 state: present
                 # update_cache: yes
                 update_cache: true
 
             - name: Install the docker cli
-              apt:
+              ansible.builtin.apt:
                 name:
                   - docker-ce-cli
                   - docker-ce
                   - containerd.io
-                  - docker-compose-plugin
+                  # - docker-compose-plugin
                   # - docker-buildx-plugin 
                 state: present
                 # update_cache: yes
@@ -80,12 +80,12 @@
                 # autoremove: yes
 
             - name: Ensure group "docker" exists
-              group:
+              ansible.builtin.group:
                 name: docker
                 state: present
 
             - name: Add the user 'user' with a bash shell, appending the group 'docker' to the user's groups
-              user:
+              ansible.builtin.user:
                 name: user
                 shell: /bin/bash
                 home: /home/user
@@ -95,14 +95,14 @@
                 append: yes
                 state: present
 
-            - name: Create the bash_aliases file if it does not exist
-              become: true
-              ansible.builtin.file:
-                path: /home/user/.bash_aliases
-                state: touch
-                owner: user
-                group: docker
-                mode: u+rwx,g-wx,o-rwx
+            # - name: Create the bash_aliases file if it does not exist
+            #   become: true
+            #   ansible.builtin.file:
+            #     path: /home/user/.bash_aliases
+            #     state: touch
+            #     owner: user
+            #     group: docker
+            #     mode: u+rwx,g-wx,o-rwx
 
             - name: Create the app config directory if it does not exist
               ansible.builtin.file:
@@ -112,74 +112,74 @@
                 # mode: '0755'
                 mode: u+rw,g-wx,o-rwx
 
-            - name: Remove the go files if it already exists
-              become: true
-              ansible.builtin.file:
-                path: /usr/local/go/
-                state: absent
+            # - name: Remove the go files if it already exists
+            #   become: true
+            #   ansible.builtin.file:
+            #     path: /usr/local/go/
+            #     state: absent
 
-            - name: Unarchive the go binaries - a file that needs to be downloaded
-              ansible.builtin.unarchive:
-                src: https://go.dev/dl/go1.20.2.linux-amd64.tar.gz
-                dest: /usr/local
-                remote_src: yes
-                creates: /usr/local/go/
-                owner: user
-                group: docker
-                mode: u+rwx,g+rwx,o-rwx
-              register: go_bin
+            # - name: Unarchive the go binaries - a file that needs to be downloaded
+            #   ansible.builtin.unarchive:
+            #     src: https://go.dev/dl/go1.20.2.linux-amd64.tar.gz
+            #     dest: /usr/local
+            #     remote_src: yes
+            #     creates: /usr/local/go/
+            #     owner: user
+            #     group: docker
+            #     mode: u+rwx,g+rwx,o-rwx
+            #   register: go_bin
                 
-            - name: Print the go bin unarchiving
-              ansible.builtin.debug:
-                var: go_bin
+            # - name: Print the go bin unarchiving
+            #   ansible.builtin.debug:
+            #     var: go_bin
 
-            - name: add go to the bash_aliases
-              ansible.builtin.shell: echo 'export PATH=$PATH:/usr/local/go/bin' > /home/user/.bash_aliases
-              args:
-                executable: /bin/bash
-
-            - name: reload bashrc
-              ansible.builtin.shell: source /home/user/.profile
-              args:
-                executable: /bin/bash
-
-            - name: chech go installation
-              ansible.builtin.shell: /usr/local/go/bin/go version
-              args:
-                executable: /bin/bash
-              register: go_ver_res
-              # failed_when: "go_ver_res.stderr.find('go: command not found') != -1"
-              failed_when: "go_ver_res.stderr.find('not found') != -1"
-                
-            - name: Print the go version
-              ansible.builtin.debug:
-                var: go_ver_res
-
-            # - name: download cnitool
-            #   ansible.builtin.shell: /usr/local/go/bin/go get github.com/containernetworking/cni
+            # - name: add go to the bash_aliases
+            #   ansible.builtin.shell: echo 'export PATH=$PATH:/usr/local/go/bin' > /home/user/.bash_aliases
             #   args:
             #     executable: /bin/bash
 
-            - name: Remove the cni go files if they already exists
-              become: true
-              ansible.builtin.file:
-                path: /home/user/app/cni
-                state: absent
-
-            - name: clone cnitool
-              ansible.builtin.shell: cd /home/user/app && git clone https://github.com/containernetworking/cni.git
-              args:
-                executable: /bin/bash
-
-            # - name: download cnitool
-            #   ansible.builtin.shell: cd /home/user/app/cni && /usr/local/go/bin/go get github.com/containernetworking/cni
+            # - name: reload bashrc
+            #   ansible.builtin.shell: source /home/user/.profile
             #   args:
             #     executable: /bin/bash
 
-            - name: install cnitool
-              ansible.builtin.shell: cd /home/user/app/cni && /usr/local/go/bin/go install github.com/containernetworking/cni/cnitool
-              args:
-                executable: /bin/bash
+            # - name: chech go installation
+            #   ansible.builtin.shell: /usr/local/go/bin/go version
+            #   args:
+            #     executable: /bin/bash
+            #   register: go_ver_res
+            #   # failed_when: "go_ver_res.stderr.find('go: command not found') != -1"
+            #   failed_when: "go_ver_res.stderr.find('not found') != -1"
+                
+            # - name: Print the go version
+            #   ansible.builtin.debug:
+            #     var: go_ver_res
+
+            # # - name: download cnitool
+            # #   ansible.builtin.shell: /usr/local/go/bin/go get github.com/containernetworking/cni
+            # #   args:
+            # #     executable: /bin/bash
+
+            # - name: Remove the cni go files if they already exists
+            #   become: true
+            #   ansible.builtin.file:
+            #     path: /home/user/app/cni
+            #     state: absent
+
+            # - name: clone cnitool
+            #   ansible.builtin.shell: cd /home/user/app && git clone https://github.com/containernetworking/cni.git
+            #   args:
+            #     executable: /bin/bash
+
+            # # - name: download cnitool
+            # #   ansible.builtin.shell: cd /home/user/app/cni && /usr/local/go/bin/go get github.com/containernetworking/cni
+            # #   args:
+            # #     executable: /bin/bash
+
+            # - name: install cnitool
+            #   ansible.builtin.shell: cd /home/user/app/cni && /usr/local/go/bin/go install github.com/containernetworking/cni/cnitool
+            #   args:
+            #     executable: /bin/bash
 
             - name: Set the native CGroupDriver - Copy using inline content
               ansible.builtin.copy:
@@ -197,20 +197,34 @@
               ansible.builtin.file:
                 path: /opt/cni/bin
                 state: directory
-                owner: user
-                # mode: '0755'
-                mode: u+rw,g-wx,o-rwx
+                owner: root
+                group: root
+                mode: u=rwx,g=rx,o=x
 
-            - name: Unarchive the CNI plugins - a file that needs to be downloaded
-              ansible.builtin.unarchive:
-                src: https://github.com/containernetworking/plugins/releases/download/v1.2.0/cni-plugins-linux-amd64-v1.2.0.tgz
-                dest: /opt/cni/bin
-                remote_src: yes
+            # - name: Unarchive the CNI plugins - a file that needs to be downloaded
+            #   ansible.builtin.unarchive:
+            #     src: https://github.com/containernetworking/plugins/releases/download/v1.2.0/cni-plugins-linux-amd64-v1.2.0.tgz
+            #     dest: /opt/cni/bin
+            #     remote_src: yes
             
             - name: Execute the command in remote shell; stdout goes to the specified file on the remote
               ansible.builtin.shell: sudo containerd config default > /etc/containerd/config.toml
               args:
                 executable: /bin/bash
+
+            - name: Replace a set of entryies int he containerd config
+              ansible.builtin.lineinfile:
+                path: /etc/containerd/config.toml
+                regexp: '{{ item.regex }}'
+                line: '{{ item.line }}'
+                owner: root
+                group: root
+                mode: 'u=rw,g=r,o=r'
+              loop: 
+                - regex: '(\s*)SystemdCgroup = false(\s*)'
+                  line: '\1SystemdCgroup = true\2'
+                - regex: '(\s*)systemd_cgroup = false(\s*)'
+                  line: '\1systemd_cgroup = true\2'
 
             - name: Enable service containerd and restart it
               ansible.builtin.service:
@@ -220,20 +234,20 @@
                 state: restarted
 
             - name: Add the kubernetes signing key to apt
-              apt_key:
+              ansible.builtin.apt_key:
                 url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
                 keyring: /etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg
                 state: present
 
             - name: Add the kubernetes apt repo
-              apt_repository:
+              ansible.builtin.apt_repository:
                 repo: "deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main"
                 state: present
                 # update_cache: yes
                 update_cache: true
 
             - name: Install kubernetes
-              apt:
+              ansible.builtin.apt:
                 name:
                   - kubectl
                   - kubelet
@@ -253,23 +267,61 @@
 
             - name: setup ip forwarding - Copy using inline content
               ansible.builtin.copy:
-                content: 'net.ipv4.ip_forward = 1'
-                dest: /etc/sysctl.d/10-ip-forwarding.conf
+                content: |
+                  net.bridge.bridge-nf-call-iptables = 1
+                  net.bridge.bridge-nf-call-ip6tables = 1
+                  net.ipv4.ip_forward = 1
+                dest: /etc/sysctl.d/k8s.conf
 
-            - name: setup ip forwarding with sysctl
-              ansible.builtin.shell: sudo sysctl net.ipv4.ip_forward=1
+            # - name: setup ip forwarding with sysctl then apply the param without reboot
+            #   ansible.builtin.shell: 'sudo sysctl {{ item }}'
+            #   args:
+            #     executable: /bin/bash
+            #   loop:
+            #     - 'net.bridge.bridge-nf-call-iptables=1'
+            #     - 'net.bridge.bridge-nf-call-ip6tables=1'
+            #     - 'net.ipv4.ip_forward=1'
+            #     - '--system'
+            
+            - name: Set ip forwarding on in /proc and in the sysctl file and reload if necessary
+              ansible.posix.sysctl:
+                name: '{{ item.name }}'
+                value: '1'
+                sysctl_set: true
+                state: present
+                reload: '{{ item.reload }}'
+              loop:
+                - name: 'net.bridge.bridge-nf-call-iptables'
+                  reload: false
+                - name: 'net.bridge.bridge-nf-call-ip6tables'
+                  reload: false
+                - name: 'net.ipv4.ip_forward'
+                  reload: true
+
+            - name: apply the sysctl params without reboot
+              ansible.builtin.shell: 'sudo sysctl --system'
               args:
                 executable: /bin/bash
+
 
             - name: setup netfilter - Copy using inline content
               ansible.builtin.copy:
-                content: 'br_netfilter'
-                dest: /etc/modules-load.d/br_nf.conf
+                content: |
+                  overlay
+                  br_netfilter
+                dest: /etc/modules-load.d/k8s.conf
 
             - name: setup netfilter with modprobe
-              ansible.builtin.shell: sudo modprobe br_netfilter
-              args:
-                executable: /bin/bash
+              community.general.modprobe:
+                name: '{{ item }}'
+                state: present
+              loop:
+                - overlay
+                - br_netfilter
+              # ansible.builtin.shell: sudo modprobe br_netfilter
+              # args:
+              #   executable: /bin/bash
+            
 
             - name: Create the kube config directory if it does not exist
               ansible.builtin.file:
@@ -284,6 +336,15 @@
               ansible.builtin.shell: sudo swapoff -a
               args:
                 executable: /bin/bash
+
+            - name: Replace a set of entryies int he containerd config
+              ansible.builtin.lineinfile:
+                path: /etc/fstab
+                regexp: '^([^#]+\s+swap\s+.+\s)$'
+                line: '# \1'
+                owner: root
+                group: root
+                mode: 'u=rw,g=r,o=r'
 
             - name: Just force systemd to reread configs (2.4 and above)
               ansible.builtin.systemd:
@@ -389,7 +450,7 @@
         become: false
         tasks:
             - name: testing my connections
-              ping:
+              ansible.builtin.ping:
 
             - name: Create the kube config directory if it does not exist
               ansible.builtin.file:
