@@ -10,7 +10,7 @@
 6. configure the VM:
    1. `sudo apt update`
    2. `sudo apt install -y ssh openssh-server iptables ufw`
-   3. `sudo systemctl status sshd` 
+   3. `sudo systemctl status sshd`
    4. if `sshd` is not running (is inactive) run: `sudo systemctl start sshd` then check via [3] above.
    5. set ssh to start on reboot: `sudo systemctl enable ssh`
    6. allow ssh through the firewall: `sudo ufw allow ssh`
@@ -24,9 +24,9 @@
 ## Documentation for some of the ansible playbook's code
 
 1. ...
-2. https://alta3.com/blog/singlevmk8s
-3. https://docs.tigera.io/calico/3.25/getting-started/kubernetes/quickstart
+2. [singlevmk8s - alta3](https://alta3.com/blog/singlevmk8s)
+3. [calico-quickstart-setup](https://docs.tigera.io/calico/3.25/getting-started/kubernetes/quickstart)
 
 ## Additional Documentation used for EC2 User Data setup
 
-- https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html
+- [AWS EC2 Instance User Data setup](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html)
